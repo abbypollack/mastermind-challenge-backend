@@ -51,7 +51,7 @@ public class GameJdbcRepository implements GameRepository{
         int rowsAffected = jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, game.getSecretCode());
-            ps.setTimestamp(2, Timestamp.valueOf(game.getGameStartTime()));
+            ps.setTimestamp(2, game.getGameStartTime() != null ? Timestamp.valueOf(game.getGameStartTime()) : null);
             ps.setTimestamp(3, game.getGameEndTime() != null ? Timestamp.valueOf(game.getGameEndTime()) : null);
             ps.setString(4, game.getDifficultyLevel());
             ps.setInt(5, game.getWinnerId());
