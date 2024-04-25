@@ -33,10 +33,10 @@ public class GameService {
     private PlayerService playerService;
 
     @Autowired
-    private ValidationService validationService;
+    private Validations validations;
 
     public Result<Game> startNewGame(List<Integer> playerIds, String difficultyLevel) {
-        if (!validationService.isValidDifficultyLevel(difficultyLevel) || playerIds == null || playerIds.isEmpty()) {
+        if (!validations.isValidDifficultyLevel(difficultyLevel) || playerIds == null || playerIds.isEmpty()) {
             Result<Game> result = new Result<>();
             result.addMessage("Invalid difficulty level or player IDs", ResultType.INVALID);
             return result;
@@ -67,7 +67,7 @@ public class GameService {
 
     @Transactional
     public Result<Guess> makeGuess(int gameId, int playerId, String guessSequence) {
-        if (!validationService.isValidGameId(gameId) || !validationService.isValidPlayerId(playerId) || !validationService.isValidGuessSequence(guessSequence)) {
+        if (!validations.isValidGameId(gameId) || !validations.isValidPlayerId(playerId) || !validations.isValidGuessSequence(guessSequence)) {
             Result<Guess> result = new Result<>();
             result.addMessage("Invalid game ID, player ID, or guess sequence.", ResultType.INVALID);
             return result;
@@ -93,7 +93,15 @@ public class GameService {
         guess.setPlayerId(playerId);
         guess.setGuessSequence(guessSequence);
         guess.setGuessTime(LocalDateTime.now());
-        guess.setFeedback(FeedbackCalculator.calculateFeedback(game.getSecretCode(), guessSequence));
+
+        Result<String> feedbackResult = calculateFeedback(game.getSecretCode(), guessSequence);
+        if (!feedbackResult.isSuccess()) {
+            for (String message : feedbackResult.getMessages()) {
+                result.addMessage(message, ResultType.INVALID);
+            }
+            return result;
+        }
+        guess.setFeedback(feedbackResult.getPayload());
         Guess createdGuess = guessRepository.create(guess);
         game.getGuesses().add(createdGuess);
 
@@ -110,10 +118,12 @@ public class GameService {
         return result;
     }
 
+
+
     public Result<Boolean> stopTimer(int gameId) {
         Result<Boolean> result = new Result<>();
 
-        if (!validationService.isValidGameId(gameId)) {
+        if (!validations.isValidGameId(gameId)) {
             result.addMessage("Invalid game ID", ResultType.INVALID);
             return result;
         }
@@ -142,7 +152,7 @@ public class GameService {
     }
 
     public Result<Game> updateSettings(int gameId, Map<String, String> settings) {
-        if (!validationService.isValidGameId(gameId)) {
+        if (!validations.isValidGameId(gameId)) {
             Result<Game> result = new Result<>();
             result.addMessage("Invalid game ID.", ResultType.NOT_FOUND);
             return result;
@@ -155,7 +165,7 @@ public class GameService {
         }
         if (settings.containsKey("difficultyLevel")) {
             String difficultyLevel = settings.get("difficultyLevel").toLowerCase();
-            if (!validationService.isValidDifficultyLevel(difficultyLevel)) {
+            if (!validations.isValidDifficultyLevel(difficultyLevel)) {
                 result.addMessage("Invalid difficulty level", ResultType.INVALID);
                 return result;
             }
@@ -171,7 +181,7 @@ public class GameService {
     }
 
     public Result<String> getHint(int gameId) {
-        if (!validationService.isValidGameId(gameId)) {
+        if (!validations.isValidGameId(gameId)) {
             Result<String> result = new Result<>();
             result.addMessage("Invalid game ID.", ResultType.NOT_FOUND);
             return result;
@@ -214,7 +224,7 @@ public class GameService {
     }
 
     public Result<List<Guess>> getGameHistory(int gameId) {
-        if (!validationService.isValidGameId(gameId)) {
+        if (!validations.isValidGameId(gameId)) {
             Result<List<Guess>> result = new Result<>();
             result.addMessage("Invalid game ID.", ResultType.NOT_FOUND);
             return result;
@@ -231,5 +241,39 @@ public class GameService {
 
     public Game findById(int gameId) {
         return gameRepository.findById(gameId);
+    }
+
+    public Result<String> calculateFeedback(String secretCode, String guess) {
+        Result<String> result = new Result<>();
+
+        if (!validations.isValidGuessSequence(secretCode) || !validations.isValidGuessSequence(guess)) {
+            result.addMessage("Invalid secretCode or guess.", ResultType.INVALID);
+            return result;
+        }
+
+        int correctPositions = 0;
+        Map<Character, Integer> secretFrequency = new HashMap<>();
+        Map<Character, Integer> guessFrequency = new HashMap<>();
+
+        for (int i = 0; i < secretCode.length(); i++) {
+            char secretChar = secretCode.charAt(i);
+            char guessChar = guess.charAt(i);
+            if (secretChar == guessChar) {
+                correctPositions++;
+            } else {
+                secretFrequency.put(secretChar, secretFrequency.getOrDefault(secretChar, 0) + 1);
+                guessFrequency.put(guessChar, guessFrequency.getOrDefault(guessChar, 0) + 1);
+            }
+        }
+
+        int correctNumbers = 0;
+        for (Map.Entry<Character, Integer> entry : guessFrequency.entrySet()) {
+            Integer secretCount = secretFrequency.getOrDefault(entry.getKey(), 0);
+            correctNumbers += Math.min(secretCount, entry.getValue());
+        }
+        correctNumbers += correctPositions;
+
+        result.setPayload(String.format("%d correct number(s) and %d correct location(s)", correctNumbers, correctPositions));
+        return result;
     }
 }
