@@ -1,0 +1,80 @@
+@url = http://localhost:8080/api
+
+### Create Player 1
+POST {{url}}/player
+Content-Type: application/json
+
+{
+  "name": "Sabrina"
+}
+
+### Create Player 2
+POST {{url}}/player
+Content-Type: application/json
+
+{
+  "name": "Symphony"
+}
+
+### Start a New Game
+POST {{url}}/game
+Content-Type: application/json
+
+{
+  "playerIds": [1,2],
+  "difficultyLevel": "Medium"
+}
+
+### Make a Guess (Player 1) 
+POST {{url}}/game/1/guess
+Content-Type: application/json
+
+{
+  "playerId": 1,
+  "guessSequence": "6677"
+} 
+
+### Make a Guess (Player 2)
+POST {{url}}/game/1/guess
+Content-Type: application/json
+
+{
+  "playerId": 2,
+  "guessSequence": "0311"
+}
+
+### Get Game History
+GET {{url}}/game/1/history
+Content-Type: application/json
+
+### Get Hint
+GET {{url}}/game/1/hint
+Content-Type: application/json
+
+### Update Game Settings
+PUT {{url}}/game/1/settings
+Content-Type: application/json
+
+{
+    "difficultyLevel": "easy"
+}
+
+### Stop Game Timer
+POST {{url}}/game/1/stop-timer
+Content-Type: application/json
+
+### Get Player 1 Game History
+GET {{url}}/player/1/games
+Content-Type: application/json
+
+### Get Player 2 Game History
+GET {{url}}/player/2/games
+Content-Type: application/json
+
+### Get Player 1 Score
+GET {{url}}/player/1/score
+Content-Type: application/json
+
+### Get Player 2 Score
+GET {{url}}/player/2/score
+Content-Type: application/json
